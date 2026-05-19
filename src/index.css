@@ -1,0 +1,6 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+* { -webkit-tap-highlight-color: transparent; }
+body { background: #030712; margin: 0; }
+textarea { resize: none; }
