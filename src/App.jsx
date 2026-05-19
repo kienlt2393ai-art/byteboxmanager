@@ -281,7 +281,7 @@ const fetchTingee = async () => {
     const res = await fetch("/api/tingee",{method:"POST",headers:{"Content-Type":"application/json"},body: JSON.stringify({
   startTimestamp: shiftStartedAt,
   endTimestamp: Date.now(),
-}),
+})});
     const data = await res.json();
     if(data.error){alert("Lỗi: "+data.error);return;}
     setTingeeResult(data);
