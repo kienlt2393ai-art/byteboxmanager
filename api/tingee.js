@@ -102,7 +102,13 @@ export default async function handler(req, res) {
     }
 
     // Chỉ lấy giao dịch CREDIT (tiền vào)
-    const credits = (data.data?.items || []).filter(t => t.type === "CREDIT");
+   const allItems = data.data?.items || [];
+const credits = allItems.filter(t => t.type === "CREDIT");
+
+// DEBUG — xóa sau khi fix xong
+console.log("RAW items count:", allItems.length);
+console.log("Types found:", allItems.map(t => t.type));
+console.log("Tingee code:", data.code, "| data keys:", Object.keys(data.data || {}));
     const total   = credits.reduce((s, t) => s + (t.amount || 0), 0);
 
     return res.status(200).json({
