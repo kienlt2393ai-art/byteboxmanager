@@ -47,23 +47,9 @@ export default async function handler(req, res) {
   if (!clientId || !secretToken) {
     return res.status(500).json({ error: "Tingee chưa được cấu hình" });
   }
-
-  const { shiftType, date } = req.body || {};
-
-  const now = new Date();
-  const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const todayStr = vnNow.toISOString().split("T")[0];
-
-  let startHour, endHour;
-  if (shiftType === "Chiều tối") {
-    startHour = 15; endHour = 23;
-  } else {
-    startHour = 8; endHour = 15;
-  }
-
-  const startDate = new Date(`${todayStr}T${String(startHour).padStart(2,"0")}:00:00+07:00`);
-  const endDate   = new Date(`${todayStr}T${String(endHour).padStart(2,"0")}:00:00+07:00`);
-
+const { startTimestamp, endTimestamp } = req.body || {};
+const startDate = new Date(parseInt(startTimestamp));
+const endDate   = new Date(parseInt(endTimestamp) || Date.now());
   const requestBody = JSON.stringify({
     skipCount: 0,
     maxResultCount: 100,
