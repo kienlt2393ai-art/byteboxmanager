@@ -121,6 +121,13 @@ console.log("Tingee code:", data.code, "| data keys:", Object.keys(data.data || 
         description: t.description,
         bank:        t.bankName,
       })),
+    _debug: {
+    allCount: allItems.length,
+    types: allItems.map(t => t.type),
+    dataKeys: Object.keys(data.data || {}),
+    code: data.code,
+  }
+});
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
