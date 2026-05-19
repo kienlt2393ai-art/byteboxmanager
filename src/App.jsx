@@ -19,8 +19,8 @@ const acct       = em => ACCOUNTS.find(a=>a.email===em);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ACCOUNTS = [
-  { name:"Chủ quán", email:"owner@bytebox.com", role:"manager",  ini:"CQ", color:"bg-violet-500" },
-  { name:"Minh",     email:"minh@bytebox.com",  role:"employee", ini:"M",  color:"bg-sky-500"    },
+  { name:"Lê Trung Kiên", email:"kienlt2393ai@gmail.com", role:"manager",  ini:"CQ", color:"bg-violet-500" },
+  { name:"Nhân viên 1",     email:"thungracdkm@gmail.com",  role:"employee", ini:"M",  color:"bg-sky-500"    },
   { name:"Tuấn",     email:"tuan@bytebox.com",  role:"employee", ini:"T",  color:"bg-emerald-500"},
 ];
 const INIT_PRODUCTS = [
