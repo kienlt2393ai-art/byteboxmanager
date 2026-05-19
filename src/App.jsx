@@ -79,7 +79,8 @@ function LoginScreen({ onLogin }) {
 
 function InventoryApp({ user, onLogout }) {
   const isManager = user.role==="manager";
-
+  const [tingeeLoading, setTingeeLoading] = useState(false);
+  const [tingeeResult,  setTingeeResult]  = useState(null);
   const [tab,         setTab]         = useState(0);
   const [products,    setProducts]    = useState([]);
   const [logs,        setLogs]        = useState([]);
@@ -273,7 +274,17 @@ function InventoryApp({ user, onLogout }) {
     }
     setEditLog(null);
   };
-
+const fetchTingee = async () => {
+  setTingeeLoading(true);
+  try {
+    const res = await fetch("/api/tingee",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shiftType:scData.shiftType})});
+    const data = await res.json();
+    if(data.error){alert("Lỗi: "+data.error);return;}
+    setTingeeResult(data);
+    setRevData(d=>({...d,tingee:data.total.toLocaleString("vi-VN")}));
+  } catch{alert("Không kết nối được Tingee");}
+  finally{setTingeeLoading(false);}
+};
   const ua=acct(user.email);
   const TABS=[
     {label:"Tổng quan",Icon:Package},{label:"Nhập kho",Icon:ArrowDownToLine},
