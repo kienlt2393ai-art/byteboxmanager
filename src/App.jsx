@@ -80,6 +80,7 @@ function LoginScreen({ onLogin }) {
 function InventoryApp({ user, onLogout }) {
   const isManager = user.role==="manager";
   const [tingeeLoading, setTingeeLoading] = useState(false);
+  const [shiftStartedAt] = useState(() => Date.now());
   const [tingeeResult,  setTingeeResult]  = useState(null);
   const [tab,         setTab]         = useState(0);
   const [products,    setProducts]    = useState([]);
@@ -239,7 +240,7 @@ function InventoryApp({ user, onLogout }) {
       const open=scData.openingStocks[p.id]??p.stock,imp=scData.importedInShift[p.id]??0;
       return{pId:p.id,open,imported:imp,close,sold:Math.max(0,open+imp-close)};
     }).filter(Boolean);
-    setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);
+    empItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fetchTingee();
   };
 
   const submitCheck = async () => {
@@ -277,7 +278,10 @@ function InventoryApp({ user, onLogout }) {
 const fetchTingee = async () => {
   setTingeeLoading(true);
   try {
-    const res = await fetch("/api/tingee",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shiftType:scData.shiftType})});
+    const res = await fetch("/api/tingee",{method:"POST",headers:{"Content-Type":"application/json"},body: JSON.stringify({
+  startTimestamp: shiftStartedAt,
+  endTimestamp: Date.now(),
+}),
     const data = await res.json();
     if(data.error){alert("Lỗi: "+data.error);return;}
     setTingeeResult(data);
