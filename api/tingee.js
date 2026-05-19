@@ -100,14 +100,14 @@ export default async function handler(req, res) {
 
     const allItems = data.data?.items || [];
     const credits = allItems.filter(t => (t.amount || 0) > 0);
-    const total    = credits.reduce((s, t) => s + (t.amount || 0), 0);
+    const total = credits.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 
     return res.status(200).json({
       total,
       count: credits.length,
       transactions: credits.map(t => ({
         id:          t.transactionId,
-        amount:      t.amount,
+        amount: parseFloat(t.amount) || 0,
         time:        t.transactionTime,
         description: t.description,
         bank:        t.bankName,
