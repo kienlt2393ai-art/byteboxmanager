@@ -424,9 +424,24 @@ function InventoryApp({ user, onLogout }) {
                   </div>
                 )}
                 <div className="bg-gray-800/40 rounded-2xl border border-gray-700/50 p-4 space-y-3">
-                  {[{key:"cash",label:"💵 Tiền mặt"},{key:"tingee",label:"📱 Tingee (QR)"},{key:"netbarbox",label:"💻 Netbarbox"}].map(f=>(
-                    <div key={f.key}><label className="text-xs text-gray-500 mb-1.5 block">{f.label}</label><input type="text" value={revData[f.key]} onChange={e=>setRevData(d=>({...d,[f.key]:fmtCur(e.target.value)}))} placeholder="0" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/></div>
-                  ))}
+                <div>
+  <label className="text-xs text-gray-500 mb-1.5 block">💵 Tiền mặt</label>
+  <input type="text" value={revData.cash} onChange={e=>setRevData(d=>({...d,cash:fmtCur(e.target.value)}))} placeholder="0" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
+</div>
+<div>
+  <label className="text-xs text-gray-500 mb-1.5 block">📱 Tingee (QR)</label>
+  <div className="flex gap-2">
+    <input type="text" value={revData.tingee} onChange={e=>setRevData(d=>({...d,tingee:fmtCur(e.target.value)}))} placeholder="0" className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
+    <button onClick={fetchTingee} disabled={tingeeLoading} className="px-3 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 rounded-xl text-white text-xs font-bold whitespace-nowrap">
+      {tingeeLoading?"...":"Lấy Tingee"}
+    </button>
+  </div>
+  {tingeeResult&&<p className="text-xs text-emerald-400 mt-1.5">✅ {tingeeResult.count} GD · {vnd(tingeeResult.total)}</p>}
+</div>
+<div>
+  <label className="text-xs text-gray-500 mb-1.5 block">💻 Netbarbox</label>
+  <input type="text" value={revData.netbarbox} onChange={e=>setRevData(d=>({...d,netbarbox:fmtCur(e.target.value)}))} placeholder="0" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
+</div>
                 </div>
                 {revNB>0&&(
                   <div className={`rounded-xl border p-4 space-y-2 ${revDiff===0?"bg-emerald-500/8 border-emerald-500/25":"bg-amber-500/8 border-amber-500/25"}`}>
