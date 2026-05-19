@@ -99,7 +99,7 @@ export default async function handler(req, res) {
     }
 
     const allItems = data.data?.items || [];
-    const credits  = allItems.filter(t => t.type === "CREDIT");
+    const credits = allItems.filter(t => (t.amount || 0) > 0);
     const total    = credits.reduce((s, t) => s + (t.amount || 0), 0);
 
     return res.status(200).json({
