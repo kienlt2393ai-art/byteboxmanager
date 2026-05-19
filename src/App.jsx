@@ -1,13 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { supabase } from "./supabase";
 import {
-  Package, Plus, Search, AlertTriangle, History, ClipboardList,
+  Package, Plus, Search, AlertTriangle, ClipboardList,
   ArrowDownToLine, X, Check, Trash2, ChevronDown, TrendingDown,
   SlidersHorizontal, RotateCcw, Edit2, LogOut, ShieldCheck,
   Sparkles, Send, ChevronRight, TrendingUp, Lock, Settings
 } from "lucide-react";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const T0  = Date.now(), DAY = 86400000;
 const todayVN    = () => new Date().toLocaleDateString("vi-VN");
 const vnd        = n  => (n||0).toLocaleString("vi-VN") + "đ";
 const parseCur   = s  => parseInt((s||"").replace(/\D/g,""))||0;
@@ -17,46 +16,20 @@ const stockBarClr= p  => p.stock===0?"bg-red-500":p.stock<=p.threshold?"bg-amber
 const stockBorder= p  => p.stock===0?"border-red-500/25 bg-red-500/5":p.stock<=p.threshold?"border-amber-500/25 bg-amber-500/5":"border-gray-700/40 bg-gray-800/30";
 const acct       = em => ACCOUNTS.find(a=>a.email===em);
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const ACCOUNTS = [
-  { name:"Lê Trung Kiên", email:"kienlt2393ai@gmail.com", role:"manager",  ini:"CQ", color:"bg-violet-500" },
-  { name:"Nhân viên 1",     email:"thungracdkm@gmail.com",  role:"employee", ini:"M",  color:"bg-sky-500"    },
+  { name:"Chủ quán", email:"owner@bytebox.com", role:"manager",  ini:"CQ", color:"bg-violet-500" },
+  { name:"Minh",     email:"minh@bytebox.com",  role:"employee", ini:"M",  color:"bg-sky-500"    },
   { name:"Tuấn",     email:"tuan@bytebox.com",  role:"employee", ini:"T",  color:"bg-emerald-500"},
 ];
-const INIT_PRODUCTS = [
-  { id:1, name:"Pepsi lon",   unit:"lon",  threshold:24, stock:48, price:15000 },
-  { id:2, name:"Redbull",     unit:"lon",  threshold:12, stock:8,  price:25000 },
-  { id:3, name:"Trà đào",     unit:"ly",   threshold:20, stock:15, price:20000 },
-  { id:4, name:"Mì tôm",      unit:"gói",  threshold:10, stock:22, price:5000  },
-  { id:5, name:"Snack Oishi", unit:"gói",  threshold:15, stock:6,  price:10000 },
-  { id:6, name:"Cà phê đá",   unit:"ly",   threshold:20, stock:31, price:20000 },
-  { id:7, name:"Nước suối",   unit:"chai", threshold:24, stock:36, price:8000  },
-  { id:8, name:"Tai nghe",    unit:"cái",  threshold:5,  stock:3,  price:0     },
-];
-const INIT_IMPORTS = [
-  { id:1, pId:1, qty:24, date:"16/05/2026", ts:T0-DAY*2, note:"Nhập từ đại lý" },
-  { id:2, pId:7, qty:24, date:"16/05/2026", ts:T0-DAY*2, note:"" },
-];
-const INIT_LOGS = [
-  { id:1, date:"17/05/2026", shiftType:"Chiều tối", employee:"Tuấn", editedBy:null,
-    revenue:{ cash:1100000, tingee:0, netbarbox:1400000, goodsRevenue:285000 },
-    items:[{pId:1,open:60,imported:0,close:48,sold:12},{pId:2,open:15,imported:0,close:8,sold:7},{pId:5,open:10,imported:0,close:6,sold:4},{pId:6,open:40,imported:0,close:31,sold:9}] },
-  { id:2, date:"17/05/2026", shiftType:"Sáng", employee:"Minh", editedBy:null,
-    revenue:{ cash:920000, tingee:0, netbarbox:920000, goodsRevenue:186000 },
-    items:[{pId:1,open:72,imported:12,close:60,sold:24},{pId:3,open:25,imported:0,close:15,sold:10},{pId:4,open:30,imported:0,close:22,sold:8}] },
-  { id:3, date:"16/05/2026", shiftType:"Chiều tối", employee:"Tuấn", editedBy:null,
-    revenue:{ cash:1050000, tingee:150000, netbarbox:1050000, goodsRevenue:220000 },
-    items:[{pId:1,open:50,imported:0,close:40,sold:10},{pId:6,open:35,imported:0,close:26,sold:9}] },
-  { id:4, date:"16/05/2026", shiftType:"Sáng", employee:"Minh", editedBy:null,
-    revenue:{ cash:780000, tingee:20000, netbarbox:800000, goodsRevenue:145000 },
-    items:[{pId:3,open:20,imported:0,close:13,sold:7},{pId:4,open:25,imported:0,close:18,sold:7}] },
-];
 
-// ── Login Screen ──────────────────────────────────────────────────────────────
+// DB ↔ App mapping
+const dbToLog = l => ({...l, shiftType:l.shift_type, editedBy:l.edited_by, editedAt:l.edited_at});
+const dbToImport = i => ({...i, pId:i.p_id});
+
 function LoginScreen({ onLogin }) {
   const [picker, setPicker] = useState(false);
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-6" style={{fontFamily:"system-ui,sans-serif"}}>
       <div className="text-center mb-10">
         <div className="text-6xl mb-4">🎮</div>
         <h1 className="text-2xl font-bold text-white">Game Shop Manager</h1>
@@ -72,7 +45,7 @@ function LoginScreen({ onLogin }) {
         </svg>
         Đăng nhập bằng Google
       </button>
-      {picker && (
+      {picker&&(
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-6" onClick={()=>setPicker(false)}>
           <div className="bg-gray-900 border border-gray-700/60 rounded-2xl w-full max-w-xs p-5" onClick={e=>e.stopPropagation()}>
             <div className="text-center mb-5">
@@ -82,7 +55,6 @@ function LoginScreen({ onLogin }) {
                 ))}
               </div>
               <p className="text-white font-semibold text-sm">Chọn tài khoản</p>
-              <p className="text-gray-500 text-xs mt-0.5">Game Shop Manager</p>
             </div>
             <div className="space-y-1.5">
               {ACCOUNTS.map(acc=>(
@@ -105,15 +77,15 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-// ── Inventory App ─────────────────────────────────────────────────────────────
 function InventoryApp({ user, onLogout }) {
   const isManager = user.role==="manager";
 
   const [tab,         setTab]         = useState(0);
-  const [products,    setProducts]    = useState(INIT_PRODUCTS);
-  const [logs,        setLogs]        = useState(INIT_LOGS);
-  const [imports,     setImports]     = useState(INIT_IMPORTS);
-  const [lastCheckTs, setLastCheckTs] = useState(T0-DAY);
+  const [products,    setProducts]    = useState([]);
+  const [logs,        setLogs]        = useState([]);
+  const [imports,     setImports]     = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [lastCheckTs, setLastCheckTs] = useState(0);
   const [search,      setSearch]      = useState("");
   const [filterLow,   setFilter]      = useState(false);
   const [modal,       setModal]       = useState(null);
@@ -133,13 +105,35 @@ function InventoryApp({ user, onLogout }) {
   const [aiMessages,  setAiMessages]  = useState([]);
   const [aiInput,     setAiInput]     = useState("");
   const [aiLoading,   setAiLoading]   = useState(false);
-  // API key lưu vào localStorage để không cần nhập lại mỗi lần
   const [apiKey,      setApiKey]      = useState(()=>localStorage.getItem("gsm_api_key")||"");
   const [showApiModal,setShowApiModal]= useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const aiBottomRef = useRef(null);
-  useEffect(()=>{ aiBottomRef.current?.scrollIntoView({behavior:"smooth"}); },[aiMessages,aiLoading]);
+  useEffect(()=>{aiBottomRef.current?.scrollIntoView({behavior:"smooth"});},[aiMessages,aiLoading]);
 
+  // ── Load data from Supabase ──────────────────────────────────
+  useEffect(()=>{ loadData(); },[]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [{ data: prods }, { data: shiftLogs }, { data: imps }] = await Promise.all([
+        supabase.from("products").select("*").order("id"),
+        supabase.from("shift_logs").select("*").order("created_at", { ascending: false }),
+        supabase.from("imports").select("*").order("created_at", { ascending: false }),
+      ]);
+      if (prods) setProducts(prods);
+      if (shiftLogs) {
+        setLogs(shiftLogs.map(dbToLog));
+        if (shiftLogs.length > 0)
+          setLastCheckTs(new Date(shiftLogs[0].created_at).getTime());
+      }
+      if (imps) setImports(imps.map(dbToImport));
+    } catch(err) { console.error("Load error:", err); }
+    setLoading(false);
+  };
+
+  // Derived
   const lowCount         = products.filter(p=>p.stock<=p.threshold).length;
   const anyImportInShift = Object.values(scData.importedInShift||{}).some(v=>v>0);
   const filtered   = useMemo(()=>products.filter(p=>!filterLow||p.stock<=p.threshold).filter(p=>!search||p.name.toLowerCase().includes(search.toLowerCase())),[products,filterLow,search]);
@@ -148,82 +142,84 @@ function InventoryApp({ user, onLogout }) {
   const logsWithRev      = useMemo(()=>logs.filter(l=>l.revenue),[logs]);
   const revDates         = useMemo(()=>[...new Set(logsWithRev.map(l=>l.date))],[logsWithRev]);
   const filteredRevLogs  = useMemo(()=>revDate?logsWithRev.filter(l=>l.date===revDate):logsWithRev,[logsWithRev,revDate]);
-  const totalEmployeeCash= useMemo(()=>logsWithRev.reduce((s,l)=>s+(l.revenue?.cash||0),0),[logsWithRev]);
   const totalNetbarbox   = useMemo(()=>logsWithRev.reduce((s,l)=>s+(l.revenue?.netbarbox||0),0),[logsWithRev]);
+  const totalEmployeeCash= useMemo(()=>logsWithRev.reduce((s,l)=>s+(l.revenue?.cash||0),0),[logsWithRev]);
   const shiftDiscrepancies=useMemo(()=>logsWithRev.filter(l=>{const exp=(l.revenue?.netbarbox||0)-(l.revenue?.tingee||0);return exp!==(l.revenue?.cash||0);}),[logsWithRev]);
 
-  const getP = id => [...products,...INIT_PRODUCTS].find(p=>p.id===id);
-  const revCash=parseCur(revData.cash),revTingee=parseCur(revData.tingee),revNetbarbox=parseCur(revData.netbarbox);
-  const revExpected=revNetbarbox-revTingee, revDiff=revExpected>0?revExpected-revCash:0;
+  const getP = id => products.find(p=>p.id===id);
+
+  const revCash=parseCur(revData.cash),revTingee=parseCur(revData.tingee),revNB=parseCur(revData.netbarbox);
+  const revExpected=revNB-revTingee, revDiff=revExpected>0?revExpected-revCash:0;
   const goodsRevenue=tempItems.reduce((s,i)=>{const p=getP(i.pId);return s+i.sold*(p?.price||0);},0);
 
   // ── AI ───────────────────────────────────────────────────────
-  const QUICK_AI = [
-    { icon:"📦", label:"Tồn kho hôm nay",      prompt:"Tổng kết tình trạng tồn kho và sản phẩm cần nhập thêm" },
-    { icon:"💰", label:"Phân tích doanh thu",   prompt:"Phân tích doanh thu các ca gần nhất, ca nào có vấn đề?" },
-    { icon:"⚠️", label:"Ca nào bất thường?",   prompt:"Ca nào có dấu hiệu bất thường về tiền mặt hoặc tồn kho?" },
-    { icon:"👥", label:"So sánh nhân viên",     prompt:"So sánh hiệu suất Minh và Tuấn dựa trên dữ liệu ca" },
+  const QUICK_AI=[
+    {icon:"📦",label:"Tồn kho hôm nay",     prompt:"Tổng kết tình trạng tồn kho và sản phẩm cần nhập thêm"},
+    {icon:"💰",label:"Phân tích doanh thu",  prompt:"Phân tích doanh thu các ca gần nhất, ca nào có vấn đề?"},
+    {icon:"⚠️",label:"Ca nào bất thường?",  prompt:"Ca nào có dấu hiệu bất thường về tiền mặt hoặc tồn kho?"},
+    {icon:"👥",label:"So sánh nhân viên",    prompt:"So sánh hiệu suất các nhân viên dựa trên dữ liệu ca"},
   ];
-
-  const buildAIPrompt = () => {
+  const buildAIPrompt=()=>{
     const low=products.filter(p=>p.stock<=p.threshold);
-    const stockLines=products.map(p=>`  ${p.name}: ${p.stock}${p.unit} (ngưỡng ${p.threshold}) ${p.stock===0?"🔴HẾT":p.stock<=p.threshold?"⚠️SẮP HẾT":"✅"} | Giá: ${vnd(p.price)}`).join("\n");
+    const stockLines=products.map(p=>`  ${p.name}: ${p.stock}${p.unit} (ngưỡng ${p.threshold}) ${p.stock===0?"🔴HẾT":p.stock<=p.threshold?"⚠️SẮP HẾT":"✅"} Giá:${vnd(p.price)}`).join("\n");
     const shiftLines=logs.slice(0,8).map(l=>{
-      const sold=l.items.map(i=>{const p=getP(i.pId);return `${p?.name||"?"}×${i.sold}`;}).join(", ");
-      const rev=l.revenue?` | TM:${vnd(l.revenue.cash)} NB:${vnd(l.revenue.netbarbox)} T:${vnd(l.revenue.tingee)}`:"";
-      const flag=l.revenue?((l.revenue.netbarbox-l.revenue.tingee)!==l.revenue.cash?" ⚠️LỆCH":""):"";
+      const sold=l.items?.map(i=>{const p=getP(i.pId);return `${p?.name||"?"}×${i.sold}`;}).join(",")||"";
+      const rev=l.revenue?` TM:${vnd(l.revenue.cash)} NB:${vnd(l.revenue.netbarbox)}`:"";
+      const flag=l.revenue&&(l.revenue.netbarbox-l.revenue.tingee)!==l.revenue.cash?" ⚠️LỆCH":"";
       return `  ${l.date} Ca ${l.shiftType}(${l.employee})${flag}: ${sold}${rev}`;
     }).join("\n");
-    return `Trợ lý AI quán game Bytebox Gaming. Hỗ trợ phân tích tồn kho, doanh thu, vận hành.
-NGÀY:${todayVN()} Ca:Sáng 8-15h/Tối 15-23h NV:Minh,Tuấn
-TỒN KHO:\n${stockLines}\n${low.length>0?`⚠️CẦN NHẬP:${low.map(p=>p.name).join(",")}`:"✅Ổn định"}
-CA LÀM VIỆC:\n${shiftLines||"  Chưa có"}
-TỔNG: NV ghi TM:${vnd(totalEmployeeCash)} NB:${vnd(totalNetbarbox)} Ca lệch:${shiftDiscrepancies.length}
-Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
+    return `Trợ lý AI quán game Bytebox Gaming.\nNGÀY:${todayVN()}\nTỒN KHO:\n${stockLines}\n${low.length>0?`CẦN NHẬP:${low.map(p=>p.name).join(",")}`:"ỔN ĐỊNH"}\nCA LÀM VIỆC:\n${shiftLines||"Chưa có"}\nTM NV:${vnd(totalEmployeeCash)} NB:${vnd(totalNetbarbox)} Ca lệch:${shiftDiscrepancies.length}\nTrả lời tiếng Việt, ngắn gọn.`;
   };
-
-  const sendAI = async (text) => {
-    const t=text.trim(); if(!t||aiLoading) return;
-    if(!apiKey){ setApiKeyInput(""); setShowApiModal(true); return; }
+  const sendAI=async(text)=>{
+    const t=text.trim();if(!t||aiLoading)return;
+    if(!apiKey){setApiKeyInput("");setShowApiModal(true);return;}
     const next=[...aiMessages,{role:"user",content:t}];
-    setAiMessages(next); setAiInput(""); setAiLoading(true);
-    try {
+    setAiMessages(next);setAiInput("");setAiLoading(true);
+    try{
       const res=await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "x-api-key": apiKey,
-          "anthropic-version":"2023-06-01",
-          "anthropic-dangerous-direct-browser-access":"true"
-        },
+        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
         body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:buildAIPrompt(),messages:next.map(m=>({role:m.role,content:m.content}))})
       });
       const data=await res.json();
-      if(data.error) setAiMessages(prev=>[...prev,{role:"assistant",content:`❌ ${data.error.message}`}]);
-      else setAiMessages(prev=>[...prev,{role:"assistant",content:data.content?.[0]?.text||"Không có phản hồi."}]);
-    } catch { setAiMessages(prev=>[...prev,{role:"assistant",content:"❌ Lỗi kết nối. Kiểm tra API key."}]); }
+      setAiMessages(prev=>[...prev,{role:"assistant",content:data.error?`❌ ${data.error.message}`:data.content?.[0]?.text||"Không có phản hồi."}]);
+    }catch{setAiMessages(prev=>[...prev,{role:"assistant",content:"❌ Lỗi kết nối."}]);}
     setAiLoading(false);
   };
 
   // ── Product CRUD ─────────────────────────────────────────────
   const openAdd  = () => { setPForm({name:"",unit:"lon",threshold:"12",stock:"0",price:""}); setModal("add"); };
   const openEdit = p  => { setPForm({name:p.name,unit:p.unit,threshold:String(p.threshold),stock:String(p.stock),price:String(p.price||"")}); setModal(p); };
-  const saveProduct = () => {
+
+  const saveProduct = async () => {
     if(!pForm.name||!pForm.unit) return;
-    const d={name:pForm.name,unit:pForm.unit,threshold:parseInt(pForm.threshold)||10,stock:parseInt(pForm.stock)||0,price:parseCur(pForm.price)};
-    if(modal==="add") setProducts(prev=>[...prev,{...d,id:Date.now()}]);
-    else setProducts(prev=>prev.map(p=>p.id===modal.id?{...p,...d}:p));
+    const data={name:pForm.name,unit:pForm.unit,threshold:parseInt(pForm.threshold)||10,stock:parseInt(pForm.stock)||0,price:parseCur(pForm.price)};
+    if(modal==="add"){
+      const {data:newP}=await supabase.from("products").insert(data).select().single();
+      if(newP) setProducts(prev=>[...prev,newP]);
+    } else {
+      await supabase.from("products").update(data).eq("id",modal.id);
+      setProducts(prev=>prev.map(p=>p.id===modal.id?{...p,...data}:p));
+    }
     setModal(null);
   };
-  const deleteProduct = id => { setProducts(prev=>prev.filter(p=>p.id!==id)); setModal(null); };
+
+  const deleteProduct = async id => {
+    await supabase.from("products").delete().eq("id",id);
+    setProducts(prev=>prev.filter(p=>p.id!==id));
+    setModal(null);
+  };
 
   // ── Import ───────────────────────────────────────────────────
-  const submitImport = () => {
+  const submitImport = async () => {
     if(!iForm.pId||!iForm.qty) return;
-    const qty=parseInt(iForm.qty),pId=parseInt(iForm.pId);
+    const qty=parseInt(iForm.qty), pId=parseInt(iForm.pId), ts=Date.now();
+    const product=products.find(p=>p.id===pId);
+    await supabase.from("products").update({stock:product.stock+qty}).eq("id",pId);
+    const {data:newImp}=await supabase.from("imports").insert({p_id:pId,qty,note:iForm.note,date:todayVN(),ts}).select().single();
     setProducts(prev=>prev.map(p=>p.id===pId?{...p,stock:p.stock+qty}:p));
-    setImports(prev=>[{id:Date.now(),pId,qty,note:iForm.note,date:todayVN(),ts:Date.now()},...prev]);
-    setIForm({pId:"",qty:"",note:""}); setISuccess(true); setTimeout(()=>setISuccess(false),2000);
+    if(newImp) setImports(prev=>[dbToImport(newImp),...prev]);
+    setIForm({pId:"",qty:"",note:""});setISuccess(true);setTimeout(()=>setISuccess(false),2000);
   };
 
   // ── Shift check ──────────────────────────────────────────────
@@ -231,58 +227,74 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
     const closes={},openingStocks={},importedInShift={};
     products.forEach(p=>{
       const impQty=imports.filter(i=>i.pId===p.id&&i.ts>lastCheckTs).reduce((s,i)=>s+i.qty,0);
-      importedInShift[p.id]=impQty; openingStocks[p.id]=p.stock-impQty; closes[p.id]="";
+      importedInShift[p.id]=impQty;openingStocks[p.id]=p.stock-impQty;closes[p.id]="";
     });
-    setScData(d=>({...d,closes,openingStocks,importedInShift})); setScStep(1);
+    setScData(d=>({...d,closes,openingStocks,importedInShift}));setScStep(1);
   };
+
   const goToRevenue = () => {
     const items=products.map(p=>{
-      const close=parseInt(scData.closes[p.id]); if(isNaN(close)) return null;
-      const open=scData.openingStocks[p.id]??p.stock, imp=scData.importedInShift[p.id]??0;
-      return {pId:p.id,open,imported:imp,close,sold:Math.max(0,open+imp-close)};
+      const close=parseInt(scData.closes[p.id]);if(isNaN(close))return null;
+      const open=scData.openingStocks[p.id]??p.stock,imp=scData.importedInShift[p.id]??0;
+      return{pId:p.id,open,imported:imp,close,sold:Math.max(0,open+imp-close)};
     }).filter(Boolean);
-    setTempItems(items); setRevData({cash:"",tingee:"",netbarbox:""}); setScStep(2);
+    setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);
   };
-  const submitCheck = () => {
+
+  const submitCheck = async () => {
     const rev={cash:parseCur(revData.cash),tingee:parseCur(revData.tingee),netbarbox:parseCur(revData.netbarbox),goodsRevenue};
-    setLogs(prev=>[{id:Date.now(),date:todayVN(),shiftType:scData.shiftType,employee:user.name,editedBy:null,items:tempItems,revenue:rev},...prev]);
-    setProducts(prev=>prev.map(p=>{const c=parseInt(scData.closes[p.id]);return isNaN(c)?p:{...p,stock:c};}));
-    setLastCheckTs(Date.now()); setScStep(3);
+    const {data:newLog}=await supabase.from("shift_logs").insert({
+      date:todayVN(),shift_type:scData.shiftType,employee:user.name,items:tempItems,revenue:rev,edited_by:null,edited_at:null
+    }).select().single();
+    for(const item of tempItems)
+      await supabase.from("products").update({stock:item.close}).eq("id",item.pId);
+    if(newLog) setLogs(prev=>[dbToLog(newLog),...prev]);
+    setProducts(prev=>prev.map(p=>{const it=tempItems.find(i=>i.pId===p.id);return it?{...p,stock:it.close}:p;}));
+    setLastCheckTs(Date.now());setScStep(3);
   };
-  const openEditLog = log => { const c={}; log.items.forEach(i=>{c[i.pId]=String(i.close);}); setEditCloses(c); setEditLog(log); };
-  const saveEditLog = () => {
+
+  // ── Manager edit ─────────────────────────────────────────────
+  const openEditLog = log => {const c={};log.items?.forEach(i=>{c[i.pId]=String(i.close);});setEditCloses(c);setEditLog(log);};
+
+  const saveEditLog = async () => {
     const items=editLog.items.map(item=>{
       const close=parseInt(editCloses[item.pId]??item.close);
-      return {...item,close,sold:Math.max(0,item.open+item.imported-close)};
+      return{...item,close,sold:Math.max(0,item.open+item.imported-close)};
     });
-    const newGoodsRevenue=items.reduce((s,item)=>{const p=getP(item.pId);return s+item.sold*(p?.price||0);},0);
-    const updatedLog={...editLog,items,editedBy:user.name,editedAt:todayVN(),revenue:editLog.revenue?{...editLog.revenue,goodsRevenue:newGoodsRevenue}:editLog.revenue};
-    setLogs(prev=>prev.map(l=>l.id===editLog.id?updatedLog:l));
-    if(logs.length>0&&logs[0].id===editLog.id)
-      setProducts(prev=>prev.map(p=>{const item=items.find(i=>i.pId===p.id);return item?{...p,stock:item.close}:p;}));
+    const newGR=items.reduce((s,item)=>{const p=getP(item.pId);return s+item.sold*(p?.price||0);},0);
+    const update={items,revenue:editLog.revenue?{...editLog.revenue,goodsRevenue:newGR}:editLog.revenue,edited_by:user.name,edited_at:todayVN()};
+    await supabase.from("shift_logs").update(update).eq("id",editLog.id);
+    const updated={...editLog,...update,editedBy:user.name,editedAt:todayVN()};
+    setLogs(prev=>prev.map(l=>l.id===editLog.id?updated:l));
+    if(logs.length>0&&logs[0].id===editLog.id){
+      for(const item of items)
+        await supabase.from("products").update({stock:item.close}).eq("id",item.pId);
+      setProducts(prev=>prev.map(p=>{const it=items.find(i=>i.pId===p.id);return it?{...p,stock:it.close}:p;}));
+    }
     setEditLog(null);
   };
 
-  const ua = acct(user.email);
+  const ua=acct(user.email);
   const TABS=[
-    {label:"Tổng quan",  Icon:Package},
-    {label:"Nhập kho",   Icon:ArrowDownToLine},
-    {label:"Kiểm kê ca", Icon:ClipboardList},
-    {label:"Doanh thu",  Icon:TrendingUp},
-    {label:"Trợ lý AI",  Icon:Sparkles},
+    {label:"Tổng quan",Icon:Package},{label:"Nhập kho",Icon:ArrowDownToLine},
+    {label:"Kiểm kê ca",Icon:ClipboardList},{label:"Doanh thu",Icon:TrendingUp},{label:"Trợ lý AI",Icon:Sparkles},
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col max-w-md mx-auto relative select-none"
-         style={{fontFamily:"'Inter',system-ui,sans-serif"}}>
+  // ── Loading screen ───────────────────────────────────────────
+  if(loading) return(
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4" style={{fontFamily:"system-ui,sans-serif"}}>
+      <div className="text-5xl">🎮</div>
+      <p className="text-gray-400 text-sm">Đang tải dữ liệu...</p>
+      <div className="flex gap-1.5">{[0,1,2].map(i=><div key={i} className="w-2 h-2 rounded-full bg-violet-400" style={{animation:`bounce 0.9s ${i*0.2}s infinite`}}/>)}</div>
+    </div>
+  );
 
+  return(
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col max-w-md mx-auto relative select-none" style={{fontFamily:"system-ui,sans-serif"}}>
       {/* Header */}
       <div className="px-4 pt-5 pb-3 bg-gray-950 sticky top-0 z-10 border-b border-gray-800/60">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-bold text-white">{["📦 Tổng quan","📦 Nhập kho","📋 Kiểm kê ca","💰 Doanh thu","🤖 Trợ lý AI"][tab]}</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Bytebox Gaming · {todayVN()}</p>
-          </div>
+          <div><h1 className="text-base font-bold text-white">{["📦 Tổng quan","📦 Nhập kho","📋 Kiểm kê ca","💰 Doanh thu","🤖 Trợ lý AI"][tab]}</h1><p className="text-xs text-gray-500 mt-0.5">Bytebox Gaming · {todayVN()}</p></div>
           <div className="flex items-center gap-2">
             {lowCount>0&&<div className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/25 rounded-full px-2.5 py-1"><AlertTriangle size={11} className="text-amber-400"/><span className="text-xs font-semibold text-amber-400">{lowCount}</span></div>}
             <div className="flex items-center gap-1.5 bg-gray-800/80 border border-gray-700/50 rounded-full pl-1 pr-2.5 py-1">
@@ -296,7 +308,6 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
       </div>
 
       <div className="flex-1 overflow-y-auto pb-20">
-
         {/* TAB 0: Overview */}
         {tab===0&&(
           <div className="px-4 pt-4 space-y-3">
@@ -309,14 +320,21 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                 <div key={s.label} className="rounded-xl p-3 border border-gray-700/40 bg-gray-800/20 text-center"><div className={`text-2xl font-bold ${s.color}`}>{s.val}</div><div className="text-xs text-gray-500 mt-0.5">{s.label}</div></div>
               ))}
             </div>
-            <div className="space-y-2">
-              {filtered.map(p=>(
-                <div key={p.id} onClick={()=>openEdit(p)} className={`flex items-center justify-between rounded-xl p-3.5 border cursor-pointer ${stockBorder(p)}`}>
-                  <div className="flex items-center gap-3"><div className={`w-1.5 h-9 rounded-full ${stockBarClr(p)}`}/><div><div className="text-sm font-semibold text-white">{p.name}</div><div className="text-xs text-gray-500 mt-0.5">{vnd(p.price)} · Ngưỡng: {p.threshold} {p.unit}</div></div></div>
-                  <div className="text-right"><div className={`text-xl font-bold ${stockColor(p)}`}>{p.stock}</div><div className="text-xs text-gray-500">{p.unit}</div></div>
-                </div>
-              ))}
-            </div>
+            {products.length===0?(
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-sm mb-3">Chưa có sản phẩm nào</p>
+                <button onClick={openAdd} className="px-4 py-2 bg-violet-600 rounded-xl text-white text-sm font-semibold">Thêm sản phẩm đầu tiên</button>
+              </div>
+            ):(
+              <div className="space-y-2">
+                {filtered.map(p=>(
+                  <div key={p.id} onClick={()=>openEdit(p)} className={`flex items-center justify-between rounded-xl p-3.5 border cursor-pointer ${stockBorder(p)}`}>
+                    <div className="flex items-center gap-3"><div className={`w-1.5 h-9 rounded-full ${stockBarClr(p)}`}/><div><div className="text-sm font-semibold text-white">{p.name}</div><div className="text-xs text-gray-500 mt-0.5">{vnd(p.price)} · Ngưỡng: {p.threshold} {p.unit}</div></div></div>
+                    <div className="text-right"><div className={`text-xl font-bold ${stockColor(p)}`}>{p.stock}</div><div className="text-xs text-gray-500">{p.unit}</div></div>
+                  </div>
+                ))}
+              </div>
+            )}
             <button onClick={openAdd} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-violet-500/30 text-violet-400 text-sm hover:bg-violet-500/5"><Plus size={15}/>Thêm sản phẩm mới</button>
           </div>
         )}
@@ -339,7 +357,7 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
               </button>
             </div>
             <div className="space-y-2">
-              {imports.slice(0,8).map(imp=>{const p=getP(imp.pId),isNew=imp.ts>lastCheckTs;return(
+              {imports.slice(0,10).map(imp=>{const p=getP(imp.pId),isNew=imp.ts>lastCheckTs;return(
                 <div key={imp.id} className="flex items-center justify-between bg-gray-800/30 rounded-xl px-3.5 py-3 border border-gray-700/30">
                   <div><div className="flex items-center gap-2"><span className="text-sm font-semibold text-white">{p?.name||"?"}</span>{isNew&&<span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">Ca này</span>}</div><div className="text-xs text-gray-500">{imp.date}{imp.note?` · ${imp.note}`:""}</div></div>
                   <div className="text-emerald-400 font-bold text-sm">+{imp.qty} {p?.unit}</div>
@@ -367,15 +385,16 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                       </button>
                     ))}
                   </div>
-                  <button onClick={startCheck} className="w-full py-3 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"><ClipboardList size={15}/>Bắt đầu kiểm kê</button>
+                  <button onClick={startCheck} className="w-full py-3 bg-violet-600 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"><ClipboardList size={15}/>Bắt đầu kiểm kê</button>
                 </div>
+                {logs.length>0&&<div className="bg-gray-800/20 rounded-xl border border-gray-700/30 p-3.5"><p className="text-xs text-gray-600 mb-1">Kiểm kê gần nhất</p><p className="text-sm text-gray-300 font-medium">Ca {logs[0].shiftType} · {logs[0].date}</p><p className="text-xs text-gray-500">NV: {logs[0].employee}</p></div>}
               </div>
             )}
             {scStep===1&&(
               <div className="space-y-3">
                 <div className="flex items-center justify-between"><div><h2 className="font-bold text-white text-sm">Bước 1 — Tồn kho</h2><p className="text-xs text-gray-500">Ca {scData.shiftType} · {user.name}</p></div><button onClick={()=>setScStep(0)} className="text-gray-600 p-1"><X size={18}/></button></div>
-                {anyImportInShift&&<div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2.5 flex gap-2"><span>ℹ️</span><p className="text-xs text-blue-300">Có hàng nhập — <span className="font-semibold">Bán ra = Đầu + Nhập − Cuối</span></p></div>}
-                <div className="grid grid-cols-12 text-xs text-gray-600 px-2 pb-0.5"><div className="col-span-4">Sản phẩm</div><div className="col-span-2 text-center">Đầu ca</div><div className="col-span-2 text-center">+Nhập</div><div className="col-span-4 text-center">Cuối ca</div></div>
+                {anyImportInShift&&<div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2.5 flex gap-2"><span>ℹ️</span><p className="text-xs text-blue-300">Có hàng nhập — Bán ra = Đầu + Nhập − Cuối</p></div>}
+                <div className="grid grid-cols-12 text-xs text-gray-600 px-2 pb-0.5"><div className="col-span-4">Sản phẩm</div><div className="col-span-2 text-center">Đầu</div><div className="col-span-2 text-center">+Nhập</div><div className="col-span-4 text-center">Cuối</div></div>
                 <div className="space-y-2">
                   {products.map(p=>{
                     const cs=scData.closes[p.id]??"",cn=parseInt(cs),open=scData.openingStocks[p.id]??p.stock,imp=scData.importedInShift[p.id]??0,sold=!isNaN(cn)?Math.max(0,open+imp-cn):null;
@@ -392,7 +411,7 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                     );
                   })}
                 </div>
-                <button onClick={goToRevenue} className="w-full py-3.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"><Check size={16}/>Tiếp theo: Nhập doanh thu</button>
+                <button onClick={goToRevenue} className="w-full py-3.5 bg-violet-600 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"><Check size={16}/>Tiếp theo: Nhập doanh thu</button>
               </div>
             )}
             {scStep===2&&(
@@ -400,7 +419,7 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                 <div className="flex items-center justify-between"><div><h2 className="font-bold text-white text-sm">Bước 2 — Doanh thu</h2><p className="text-xs text-gray-500">Ca {scData.shiftType} · {user.name}</p></div><button onClick={()=>setScStep(1)} className="text-gray-600 p-1"><X size={18}/></button></div>
                 {goodsRevenue>0&&(
                   <div className="bg-gray-800/40 rounded-xl border border-gray-700/50 p-3.5">
-                    <div className="flex justify-between mb-2"><p className="text-xs text-gray-400">Doanh thu hàng hóa (tự tính)</p><span className="text-sm font-bold text-emerald-400">{vnd(goodsRevenue)}</span></div>
+                    <div className="flex justify-between mb-2"><p className="text-xs text-gray-400">Doanh thu hàng hóa</p><span className="text-sm font-bold text-emerald-400">{vnd(goodsRevenue)}</span></div>
                     {tempItems.filter(i=>{const p=getP(i.pId);return i.sold>0&&(p?.price||0)>0;}).map(i=>{const p=getP(i.pId);return<div key={i.pId} className="flex justify-between text-xs text-gray-500"><span>{p?.name}×{i.sold}</span><span>{vnd(i.sold*(p?.price||0))}</span></div>;})}
                   </div>
                 )}
@@ -409,21 +428,21 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                     <div key={f.key}><label className="text-xs text-gray-500 mb-1.5 block">{f.label}</label><input type="text" value={revData[f.key]} onChange={e=>setRevData(d=>({...d,[f.key]:fmtCur(e.target.value)}))} placeholder="0" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/></div>
                   ))}
                 </div>
-                {revNetbarbox>0&&(
+                {revNB>0&&(
                   <div className={`rounded-xl border p-4 space-y-2 ${revDiff===0?"bg-emerald-500/8 border-emerald-500/25":"bg-amber-500/8 border-amber-500/25"}`}>
                     <div className="flex justify-between text-xs"><span className="text-gray-400">Kỳ vọng (NB−Tingee)</span><span className="text-gray-200">{vnd(revExpected)}</span></div>
                     <div className="flex justify-between text-xs"><span className="text-gray-400">Thực tế</span><span className="text-gray-200">{vnd(revCash)}</span></div>
                     <div className={`flex justify-between text-sm font-bold border-t border-gray-700/40 pt-2 ${revDiff===0?"text-emerald-400":"text-amber-400"}`}><span>Chênh lệch</span><span>{revDiff===0?"✅ Khớp":`⚠️ ${vnd(revDiff)}`}</span></div>
                   </div>
                 )}
-                <button onClick={submitCheck} className="w-full py-3.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"><Check size={16}/>Hoàn tất kiểm kê</button>
+                <button onClick={submitCheck} className="w-full py-3.5 bg-violet-600 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"><Check size={16}/>Hoàn tất kiểm kê</button>
                 <p className="text-xs text-gray-600 text-center">Có thể bỏ qua nếu chưa có số liệu</p>
               </div>
             )}
             {scStep===3&&(
               <div className="flex flex-col items-center justify-center py-14 space-y-5">
                 <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center"><Check size={32} className="text-emerald-400"/></div>
-                <div className="text-center"><h2 className="text-xl font-bold text-white">Kiểm kê hoàn tất!</h2><p className="text-sm text-gray-400 mt-1.5">Đã lưu tồn kho và doanh thu</p></div>
+                <div className="text-center"><h2 className="text-xl font-bold text-white">Kiểm kê hoàn tất!</h2><p className="text-sm text-gray-400 mt-1.5">Đã lưu vào hệ thống</p></div>
                 <div className="flex gap-3 w-full">
                   <button onClick={()=>{setScStep(0);setTab(3);}} className="flex-1 py-3 rounded-xl border border-gray-700 text-gray-300 text-sm font-semibold">Xem doanh thu</button>
                   <button onClick={()=>setScStep(0)} className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold flex items-center justify-center gap-1.5"><RotateCcw size={14}/>Kiểm kê mới</button>
@@ -453,33 +472,35 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                     <button onClick={()=>setRevDate("")} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border ${!revDate?"bg-violet-600/70 border-violet-500/50 text-white":"bg-gray-800/60 border-gray-700/50 text-gray-500"}`}>Tất cả</button>
                     {revDates.map(d=><button key={d} onClick={()=>setRevDate(revDate===d?"":d)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border ${revDate===d?"bg-violet-600/70 border-violet-500/50 text-white":"bg-gray-800/60 border-gray-700/50 text-gray-500"}`}>{d}</button>)}
                   </div>
-                  <div className="space-y-2">
-                    {filteredRevLogs.map(log=>{
-                      const expCash=(log.revenue.netbarbox||0)-(log.revenue.tingee||0),diff=expCash-(log.revenue.cash||0),isOk=diff===0;
-                      return(
-                        <div key={log.id} className="bg-gray-800/30 rounded-2xl border border-gray-700/40 overflow-hidden">
-                          <button className="w-full flex items-center justify-between p-4 text-left" onClick={()=>setExpandedRev(expandedRev===log.id?null:log.id)}>
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-bold text-white">Ca {log.shiftType}</span>
-                                <span className="text-xs bg-violet-500/15 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-full">{log.employee}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full border ${isOk?"bg-emerald-500/15 text-emerald-400 border-emerald-500/20":"bg-amber-500/15 text-amber-400 border-amber-500/20"}`}>{isOk?"✅ Khớp":`⚠️ ${diff>0?"−":"+"}${vnd(Math.abs(diff))}`}</span>
+                  {filteredRevLogs.length===0?<p className="text-center text-gray-600 text-sm py-8">Chưa có dữ liệu doanh thu</p>:(
+                    <div className="space-y-2">
+                      {filteredRevLogs.map(log=>{
+                        const expCash=(log.revenue?.netbarbox||0)-(log.revenue?.tingee||0),diff=expCash-(log.revenue?.cash||0),isOk=diff===0;
+                        return(
+                          <div key={log.id} className="bg-gray-800/30 rounded-2xl border border-gray-700/40 overflow-hidden">
+                            <button className="w-full flex items-center justify-between p-4 text-left" onClick={()=>setExpandedRev(expandedRev===log.id?null:log.id)}>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-bold text-white">Ca {log.shiftType}</span>
+                                  <span className="text-xs bg-violet-500/15 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-full">{log.employee}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border ${isOk?"bg-emerald-500/15 text-emerald-400 border-emerald-500/20":"bg-amber-500/15 text-amber-400 border-amber-500/20"}`}>{isOk?"✅ Khớp":`⚠️ ${diff>0?"−":"+"}${vnd(Math.abs(diff))}`}</span>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">{log.date} · NB: {vnd(log.revenue?.netbarbox)}</div>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">{log.date} · NB: {vnd(log.revenue.netbarbox)}</div>
-                            </div>
-                            <ChevronDown size={16} className={`text-gray-500 transition-transform ${expandedRev===log.id?"rotate-180":""}`}/>
-                          </button>
-                          {expandedRev===log.id&&(
-                            <div className="border-t border-gray-700/40 px-4 pb-4 pt-3 space-y-2">
-                              {[["Tiền mặt NV ghi",vnd(log.revenue.cash),"text-gray-200"],["Netbarbox",vnd(log.revenue.netbarbox),"text-gray-200"],["Tingee (QR)",vnd(log.revenue.tingee),"text-gray-200"],["Kỳ vọng tiền mặt",vnd(expCash),"text-gray-200"],["Chênh lệch",isOk?"✅ Khớp":`${diff>0?"−":"+"}${vnd(Math.abs(diff))}`,isOk?"text-emerald-400":"text-amber-400"],["Doanh thu hàng hóa",vnd(log.revenue.goodsRevenue),"text-violet-400"]].map(([k,v,c])=>(
-                                <div key={k} className="flex justify-between text-xs"><span className="text-gray-500">{k}</span><span className={`font-semibold ${c}`}>{v}</span></div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                              <ChevronDown size={16} className={`text-gray-500 transition-transform ${expandedRev===log.id?"rotate-180":""}`}/>
+                            </button>
+                            {expandedRev===log.id&&(
+                              <div className="border-t border-gray-700/40 px-4 pb-4 pt-3 space-y-2">
+                                {[["Tiền mặt NV",vnd(log.revenue?.cash),"text-gray-200"],["Netbarbox",vnd(log.revenue?.netbarbox),"text-gray-200"],["Tingee",vnd(log.revenue?.tingee),"text-gray-200"],["Kỳ vọng",vnd(expCash),"text-gray-200"],["Chênh lệch",isOk?"✅ Khớp":`${diff>0?"−":"+"}${vnd(Math.abs(diff))}`,isOk?"text-emerald-400":"text-amber-400"],["Hàng hóa",vnd(log.revenue?.goodsRevenue),"text-violet-400"]].map(([k,v,c])=>(
+                                  <div key={k} className="flex justify-between text-xs"><span className="text-gray-500">{k}</span><span className={`font-semibold ${c}`}>{v}</span></div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Lịch sử kiểm kê</h3>
@@ -489,7 +510,7 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                   </div>
                   <div className="space-y-2">
                     {filteredLogs.map(log=>{
-                      const hasImports=log.items.some(i=>i.imported>0);
+                      const hasImports=log.items?.some(i=>i.imported>0);
                       return(
                         <div key={log.id} className="bg-gray-800/30 rounded-2xl border border-gray-700/40 overflow-hidden">
                           <div className="flex items-center justify-between p-4">
@@ -499,7 +520,7 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                                 <span className="text-xs bg-violet-500/15 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-full">{log.employee}</span>
                                 {log.editedBy&&<span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">✏️ Đã sửa</span>}
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">{log.date} · {log.items.length} sp</div>
+                              <div className="text-xs text-gray-500 mt-1">{log.date} · {log.items?.length||0} sp</div>
                             </button>
                             <div className="flex items-center gap-2 ml-2">
                               <button onClick={()=>openEditLog(log)} className="p-2 rounded-lg bg-gray-700/60 hover:bg-violet-600/40 text-gray-400 hover:text-violet-300"><Edit2 size={14}/></button>
@@ -509,7 +530,7 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
                           {expandedLog===log.id&&(
                             <div className="border-t border-gray-700/40 px-4 pb-4 pt-3">
                               <div className={`grid text-xs text-gray-600 mb-2 ${hasImports?"grid-cols-5":"grid-cols-4"}`}><div className="col-span-2">Sản phẩm</div><div className="text-center">Đầu</div>{hasImports&&<div className="text-center">+Nhập</div>}<div className="text-center">Bán</div></div>
-                              {log.items.map(item=>{const p=getP(item.pId);return(
+                              {log.items?.map(item=>{const p=getP(item.pId);return(
                                 <div key={item.pId} className={`grid py-2 border-b border-gray-700/20 last:border-0 text-sm ${hasImports?"grid-cols-5":"grid-cols-4"}`}>
                                   <div className="col-span-2 text-gray-200">{p?.name||"?"}</div>
                                   <div className="text-center text-gray-400">{item.open}</div>
@@ -535,16 +556,10 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
             <div className="px-4 py-4 space-y-4 min-h-96">
               {aiMessages.length===0&&(
                 <div className="space-y-4">
-                  {!apiKey&&(
-                    <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-4">
-                      <p className="text-sm font-bold text-amber-300 mb-1">⚙️ Cần cài đặt API Key</p>
-                      <p className="text-xs text-amber-200/70 mb-3">Lấy API key tại console.anthropic.com</p>
-                      <button onClick={()=>{setApiKeyInput("");setShowApiModal(true);}} className="px-4 py-2 bg-amber-500/20 border border-amber-500/40 rounded-xl text-amber-300 text-xs font-semibold">Nhập API Key</button>
-                    </div>
-                  )}
+                  {!apiKey&&<div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-4"><p className="text-sm font-bold text-amber-300 mb-1">⚙️ Cần API Key</p><p className="text-xs text-amber-200/70 mb-3">Lấy tại console.anthropic.com</p><button onClick={()=>{setApiKeyInput("");setShowApiModal(true);}} className="px-4 py-2 bg-amber-500/20 border border-amber-500/40 rounded-xl text-amber-300 text-xs font-semibold">Nhập API Key</button></div>}
                   <div className="bg-gradient-to-br from-violet-500/10 to-blue-500/10 border border-violet-500/20 rounded-2xl p-4">
                     <p className="text-sm font-bold text-white mb-3">Tôi có thể giúp bạn:</p>
-                    {[["💰","Đối chiếu tiền mặt với hệ thống"],["📊","Phân tích doanh thu theo ca / tuần"],["📦","Cảnh báo hàng sắp hết, gợi ý nhập"],["🔍","Phát hiện ca bất thường"]].map(([i,t])=>(
+                    {[["💰","Đối chiếu tiền mặt"],["📊","Phân tích doanh thu"],["📦","Gợi ý nhập hàng"],["🔍","Phát hiện bất thường"]].map(([i,t])=>(
                       <div key={t} className="flex items-center gap-2.5 mt-2"><span>{i}</span><span className="text-xs text-gray-300">{t}</span></div>
                     ))}
                   </div>
@@ -627,7 +642,7 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
             <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-white">Chỉnh sửa kiểm kê</h3><button onClick={()=>setEditLog(null)} className="text-gray-500 p-1"><X size={20}/></button></div>
             {logs.length>0&&logs[0].id===editLog.id&&<div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2.5 mb-4 flex gap-2"><span>⚠️</span><p className="text-xs text-amber-300">Ca gần nhất — lưu sẽ cập nhật tồn kho và doanh thu HH</p></div>}
             <div className="space-y-2 mb-4">
-              {editLog.items.map(item=>{
+              {editLog.items?.map(item=>{
                 const p=getP(item.pId),cs=editCloses[item.pId]??"",cn=parseInt(cs),sold=!isNaN(cn)?Math.max(0,item.open+item.imported-cn):null;
                 return(
                   <div key={item.pId} className="bg-gray-800/30 rounded-xl border border-gray-700/40 p-3">
@@ -655,9 +670,8 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 px-6">
           <div className="bg-gray-900 border border-gray-700/80 rounded-2xl w-full max-w-xs p-5 space-y-4">
             <h3 className="font-bold text-white">⚙️ Anthropic API Key</h3>
-            <p className="text-xs text-gray-400">Lấy key tại <span className="text-violet-400">console.anthropic.com</span> → API Keys → Create</p>
-            <input value={apiKeyInput} onChange={e=>setApiKeyInput(e.target.value)} placeholder="sk-ant-..." type="password"
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
+            <p className="text-xs text-gray-400">Lấy key tại <span className="text-violet-400">console.anthropic.com</span></p>
+            <input value={apiKeyInput} onChange={e=>setApiKeyInput(e.target.value)} placeholder="sk-ant-..." type="password" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
             <div className="flex gap-3">
               <button onClick={()=>setShowApiModal(false)} className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 text-sm">Hủy</button>
               <button onClick={()=>{const k=apiKeyInput.trim();setApiKey(k);localStorage.setItem("gsm_api_key",k);setShowApiModal(false);}} className="flex-1 py-2.5 bg-violet-600 rounded-xl text-white text-sm font-bold">Lưu</button>
@@ -665,7 +679,6 @@ Trả lời tiếng Việt, ngắn gọn, dùng ✅⚠️🔴.`;
           </div>
         </div>
       )}
-
       <style>{`@keyframes bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-5px);opacity:1}}`}</style>
     </div>
   );
