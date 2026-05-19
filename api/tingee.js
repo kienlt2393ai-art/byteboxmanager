@@ -1,10 +1,9 @@
 import crypto from "crypto";
 
-// Sinh timestamp format yyyyMMddHHmmssSSS (UTC+7)
 function getTimestamp() {
   const now = new Date();
   const utc7 = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const p  = (n, l = 2) => String(n).padStart(l, "0");
+  const p = (n, l = 2) => String(n).padStart(l, "0");
   return (
     utc7.getUTCFullYear() +
     p(utc7.getUTCMonth() + 1) +
@@ -16,7 +15,6 @@ function getTimestamp() {
   );
 }
 
-// Sinh chữ ký HMAC SHA512
 function generateSignature(timestamp, body, secretToken) {
   return crypto
     .createHmac("sha512", secretToken)
@@ -24,7 +22,6 @@ function generateSignature(timestamp, body, secretToken) {
     .digest("hex");
 }
 
-// Sinh startTime/endTime format yyyyMMddHHmmss (UTC+7)
 function toTingeeTime(date) {
   const utc7 = new Date(date.getTime() + 7 * 60 * 60 * 1000);
   const p = (n) => String(n).padStart(2, "0");
@@ -39,7 +36,6 @@ function toTingeeTime(date) {
 }
 
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -48,17 +44,15 @@ export default async function handler(req, res) {
 
   const clientId    = process.env.TINGEE_CLIENT_ID;
   const secretToken = process.env.TINGEE_SECRET_TOKEN;
-
   if (!clientId || !secretToken) {
     return res.status(500).json({ error: "Tingee chưa được cấu hình" });
   }
 
-  // Nhận shiftType từ frontend để tính khung giờ
   const { shiftType, date } = req.body || {};
 
-  // Tính startTime / endTime theo ca
-  const today = date ? new Date(date) : new Date();
-  const todayStr = today.toISOString().split("T")[0]; // yyyy-MM-dd
+  const now = new Date();
+  const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const todayStr = vnNow.toISOString().split("T")[0];
 
   let startHour, endHour;
   if (shiftType === "Chiều tối") {
@@ -98,18 +92,15 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (data.code !== "00") {
-      return res.status(400).json({ error: data.message || "Lỗi Tingee API", code: data.code });
+      return res.status(200).json({
+        total: 0, count: 0, transactions: [],
+        _debug: { error: data.message, code: data.code, rawData: data }
+      });
     }
 
-    // Chỉ lấy giao dịch CREDIT (tiền vào)
-   const allItems = data.data?.items || [];
-const credits = allItems.filter(t => t.type === "CREDIT");
-
-// DEBUG — xóa sau khi fix xong
-console.log("RAW items count:", allItems.length);
-console.log("Types found:", allItems.map(t => t.type));
-console.log("Tingee code:", data.code, "| data keys:", Object.keys(data.data || {}));
-    const total   = credits.reduce((s, t) => s + (t.amount || 0), 0);
+    const allItems = data.data?.items || [];
+    const credits  = allItems.filter(t => t.type === "CREDIT");
+    const total    = credits.reduce((s, t) => s + (t.amount || 0), 0);
 
     return res.status(200).json({
       total,
@@ -121,13 +112,13 @@ console.log("Tingee code:", data.code, "| data keys:", Object.keys(data.data || 
         description: t.description,
         bank:        t.bankName,
       })),
-    _debug: {
-    allCount: allItems.length,
-    types: allItems.map(t => t.type),
-    dataKeys: Object.keys(data.data || {}),
-    code: data.code,
-  }
-});
+      _debug: {
+        allCount: allItems.length,
+        types: [...new Set(allItems.map(t => t.type))],
+        startTime: toTingeeTime(startDate),
+        endTime:   toTingeeTime(endDate),
+        code: data.code,
+      }
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
