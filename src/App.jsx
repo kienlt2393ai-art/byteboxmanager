@@ -80,6 +80,7 @@ function LoginScreen({ onLogin }) {
 function InventoryApp({ user, onLogout }) {
   const isManager = user.role==="manager";
   const [tingeeLoading, setTingeeLoading] = useState(false);
+  const [checkTs, setCheckTs] = useState(null);
   const [shiftStartedAt] = useState(() => Date.now());
   const [tingeeResult,  setTingeeResult]  = useState(null);
   const [tab,         setTab]         = useState(0);
@@ -240,8 +241,9 @@ function InventoryApp({ user, onLogout }) {
       const open=scData.openingStocks[p.id]??p.stock,imp=scData.importedInShift[p.id]??0;
       return{pId:p.id,open,imported:imp,close,sold:Math.max(0,open+imp-close)};
     }).filter(Boolean);
-const checkTs = Date.now();
-setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fetchTingee(checkTs);
+const ts = Date.now();
+setCheckTs(ts);
+setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fetchTingee(ts);
   };
 
   const submitCheck = async () => {
@@ -446,12 +448,10 @@ const fetchTingee = async (endTs) => {
 </div>
 <div>
   <label className="text-xs text-gray-500 mb-1.5 block">📱 Tingee (QR)</label>
-  <div className="flex gap-2">
+  <div>
     <input type="text" value={revData.tingee} onChange={e=>setRevData(d=>({...d,tingee:fmtCur(e.target.value)}))} placeholder="0" className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
-    <button onClick={fetchTingee} disabled={tingeeLoading} className="px-3 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 rounded-xl text-white text-xs font-bold whitespace-nowrap">
-      {tingeeLoading?"...":"Lấy Tingee"}
-    </button>
   </div>
+  {checkTs && <p className="text-xs text-gray-400 mb-3">🕐 Thời gian giao ca: {new Date(checkTs).toLocaleDateString("vi-VN")} {String(new Date(checkTs).getHours()).padStart(2,"0")}:{String(new Date(checkTs).getMinutes()).padStart(2,"0")}</p>}
   {tingeeResult&&<p className="text-xs text-emerald-400 mt-1.5">✅ {tingeeResult.count} GD · {vnd(tingeeResult.total)}</p>}
 </div>
 <div>
