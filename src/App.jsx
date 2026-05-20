@@ -247,6 +247,7 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
   };
 
   const submitCheck = async () => {
+      alert("submit bắt đầu!");
   const rev={cash:parseCur(revData.cash),tingee:parseCur(revData.tingee),netbarbox:parseCur(revData.netbarbox),goodsRevenue};
   try {
     const {data:newLog,error}=await supabase.from("shift_logs").insert({
@@ -260,7 +261,6 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
   } catch(err) {
     console.error("Submit failed:",err);
   }
-    alert("telegram!");
   // Gửi Telegram
 const fmt = n => (n||0).toLocaleString("vi-VN") + "đ";
 const checkTime = new Date(checkTs);
