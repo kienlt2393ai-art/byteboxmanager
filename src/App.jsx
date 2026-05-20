@@ -162,34 +162,48 @@ function InventoryApp({ user, onLogout }) {
     {icon:"⚠️",label:"Ca nào bất thường?",  prompt:"Ca nào có dấu hiệu bất thường về tiền mặt hoặc tồn kho?"},
     {icon:"👥",label:"So sánh nhân viên",    prompt:"So sánh hiệu suất các nhân viên dựa trên dữ liệu ca"},
   ];
-  const buildAIPrompt=()=>{
-    const low=products.filter(p=>p.stock<=p.threshold);
-    const stockLines=products.map(p=>`  ${p.name}: ${p.stock}${p.unit} (ngưỡng ${p.threshold}) ${p.stock===0?"🔴HẾT":p.stock<=p.threshold?"⚠️SẮP HẾT":"✅"} Giá:${vnd(p.price)}`).join("\n");
-    const shiftLines=logs.slice(0,8).map(l=>{
-      const sold=l.items?.map(i=>{const p=getP(i.pId);return `${p?.name||"?"}×${i.sold}`;}).join(",")||"";
-      const rev=l.revenue?` TM:${vnd(l.revenue.cash)} NB:${vnd(l.revenue.netbarbox)}`:"";
-      const flag=l.revenue&&(l.revenue.netbarbox-l.revenue.tingee)!==l.revenue.cash?" ⚠️LỆCH":"";
-      return `  ${l.date} Ca ${l.shiftType}(${l.employee})${flag}: ${sold}${rev}`;
-    }).join("\n");
-    return `Trợ lý AI quán game Bytebox Gaming.\nNGÀY:${todayVN()}\nTỒN KHO:\n${stockLines}\n${low.length>0?`CẦN NHẬP:${low.map(p=>p.name).join(",")}`:"ỔN ĐỊNH"}\nCA LÀM VIỆC:\n${shiftLines||"Chưa có"}\nTM NV:${vnd(totalEmployeeCash)} NB:${vnd(totalNetbarbox)} Ca lệch:${shiftDiscrepancies.length}\nTrả lời tiếng Việt, ngắn gọn.`;
-  };
-  const sendAI=async(text)=>{
-    const t=text.trim();if(!t||aiLoading)return;
-    if(!apiKey){setApiKeyInput("");setShowApiModal(true);return;}
-    const next=[...aiMessages,{role:"user",content:t}];
-    setAiMessages(next);setAiInput("");setAiLoading(true);
-    try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:buildAIPrompt(),messages:next.map(m=>({role:m.role,content:m.content}))})
-      });
-      const data=await res.json();
-      setAiMessages(prev=>[...prev,{role:"assistant",content:data.error?`❌ ${data.error.message}`:data.content?.[0]?.text||"Không có phản hồi."}]);
-    }catch{setAiMessages(prev=>[...prev,{role:"assistant",content:"❌ Lỗi kết nối."}]);}
-    setAiLoading(false);
-  };
+ const buildAIPrompt = () => {
+  const low = products.filter(p => p.stock <= p.threshold);
+  
+  const stockLines = products.map(p =>
+    `  ${p.name}: ${p.stock}${p.unit} (ngưỡng ${p.threshold}) ${p.stock===0?"🔴HẾT":p.stock<=p.threshold?"⚠️SẮP HẾT":"✅"} Giá:${vnd(p.price)}`
+  ).join("\n");
 
+  const shiftLines = logs.slice(0,10).map(l => {
+    const sold = l.items?.map(i => { const p=getP(i.pId); return `${p?.name||"?"}×${i.sold}`; }).join(",") || "không có";
+    const rev = l.revenue ? `TM:${vnd(l.revenue.cash)} Tingee:${vnd(l.revenue.tingee)} NB:${vnd(l.revenue.netbarbox)} Hàng:${vnd(l.revenue.goodsRevenue)}` : "";
+    const total = l.revenue ? l.revenue.cash+l.revenue.tingee+(l.revenue.netbarbox||0)+(l.revenue.goodsRevenue||0) : 0;
+    const isOk = l.isOk;
+    return `  ${l.date} Ca ${l.shiftType}(${l.employee}) ${isOk?"✅":"⚠️LỆCH"} Tổng:${vnd(total)} | ${rev} | Bán:${sold}`;
+  }).join("\n");
+
+  const importLines = imports.slice(0,5).map(i =>
+    `  ${i.date} ${i.employee}: ${i.items?.map(x=>{ const p=getP(x.pId); return `${p?.name||"?"}+${x.qty}`; }).join(",") || ""} Chi:${vnd(i.totalCost)}`
+  ).join("\n");
+
+  const totalRev = logs.reduce((s,l) => s+(l.revenue?(l.revenue.cash+l.revenue.tingee+(l.revenue.netbarbox||0)+(l.revenue.goodsRevenue||0)):0), 0);
+  const totalTingee = logs.reduce((s,l) => s+(l.revenue?.tingee||0), 0);
+  const totalCash = logs.reduce((s,l) => s+(l.revenue?.cash||0), 0);
+
+  return `Bạn là trợ lý quản lý quán game Bytebox Gaming (36 máy, 2 nhân viên).
+NGÀY HÔM NAY: ${todayVN()}
+
+📦 TỒN KHO HIỆN TẠI:
+${stockLines}
+${low.length>0 ? `⚠️ CẦN NHẬP NGAY: ${low.map(p=>p.name).join(", ")}` : "✅ Tồn kho ổn định"}
+
+📊 10 CA GẦN NHẤT:
+${shiftLines || "Chưa có dữ liệu"}
+
+📥 NHẬP KHO GẦN ĐÂY:
+${importLines || "Chưa có"}
+
+💰 TỔNG DOANH THU (${logs.length} ca):
+  Tổng: ${vnd(totalRev)} | Tiền mặt: ${vnd(totalCash)} | Tingee: ${vnd(totalTingee)}
+  Ca lệch: ${shiftDiscrepancies.length}/${logs.length} ca
+
+Trả lời bằng tiếng Việt, ngắn gọn, thực tế. Có thể tư vấn về tồn kho, doanh thu, xu hướng bán hàng.`;
+};
   // ── Product CRUD ─────────────────────────────────────────────
   const openAdd  = () => { setPForm({name:"",unit:"lon",threshold:"12",stock:"0",price:""}); setModal("add"); };
   const openEdit = p  => { setPForm({name:p.name,unit:p.unit,threshold:String(p.threshold),stock:String(p.stock),price:String(p.price||"")}); setModal(p); };
