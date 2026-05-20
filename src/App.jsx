@@ -240,7 +240,8 @@ function InventoryApp({ user, onLogout }) {
       const open=scData.openingStocks[p.id]??p.stock,imp=scData.importedInShift[p.id]??0;
       return{pId:p.id,open,imported:imp,close,sold:Math.max(0,open+imp-close)};
     }).filter(Boolean);
-   setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fetchTingee();
+const checkTs = Date.now();
+setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fetchTingee(checkTs);
   };
 
   const submitCheck = async () => {
@@ -275,12 +276,12 @@ function InventoryApp({ user, onLogout }) {
     }
     setEditLog(null);
   };
-const fetchTingee = async () => {
+const fetchTingee = async (endTs) => {
   setTingeeLoading(true);
   try {
     const res = await fetch("/api/tingee",{method:"POST",headers:{"Content-Type":"application/json"},body: JSON.stringify({
-  startTimestamp: shiftStartedAt,
-  endTimestamp: Date.now(),
+  startTimestamp: lastCheckTs,
+  endTimestamp: endTs || Date.now(),
 })});
     const data = await res.json();
     if(data.error){alert("Lỗi: "+data.error);return;}
