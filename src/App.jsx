@@ -204,6 +204,29 @@ ${importLines || "Chưa có"}
 
 Trả lời bằng tiếng Việt, ngắn gọn, thực tế. Có thể tư vấn về tồn kho, doanh thu, xu hướng bán hàng.`;
 };
+const sendAI = async (text) => {
+  const t = text.trim(); if(!t||aiLoading) return;
+  if(!apiKey){setApiKeyInput("");setShowApiModal(true);return;}
+  const next = [...aiMessages,{role:"user",content:t}];
+  setAiMessages(next);setAiInput("");setAiLoading(true);
+  try {
+    const contents = next.map(m=>({
+      role: m.role==="assistant"?"model":"user",
+      parts:[{text:m.content}]
+    }));
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {method:"POST",headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({system_instruction:{parts:[{text:buildAIPrompt()}]},contents})}
+    );
+    const data = await res.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text||data.error?.message||"Không có phản hồi.";
+    setAiMessages(prev=>[...prev,{role:"assistant",content:data.error?`❌ ${reply}`:reply}]);
+  } catch {
+    setAiMessages(prev=>[...prev,{role:"assistant",content:"❌ Lỗi kết nối."}]);
+  }
+  setAiLoading(false);
+};
   // ── Product CRUD ─────────────────────────────────────────────
   const openAdd  = () => { setPForm({name:"",unit:"lon",threshold:"12",stock:"0",price:""}); setModal("add"); };
   const openEdit = p  => { setPForm({name:p.name,unit:p.unit,threshold:String(p.threshold),stock:String(p.stock),price:String(p.price||"")}); setModal(p); };
@@ -752,9 +775,9 @@ const fetchTingee = async (endTs) => {
       {showApiModal&&(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 px-6">
           <div className="bg-gray-900 border border-gray-700/80 rounded-2xl w-full max-w-xs p-5 space-y-4">
-            <h3 className="font-bold text-white">⚙️ Anthropic API Key</h3>
+            <h3 className="font-bold text-white">⚙️ Gemini API Key</h3>
             <p className="text-xs text-gray-400">Lấy key tại <span className="text-violet-400">console.anthropic.com</span></p>
-            <input value={apiKeyInput} onChange={e=>setApiKeyInput(e.target.value)} placeholder="sk-ant-..." type="password" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
+            <input value={apiKeyInput} onChange={e=>setApiKeyInput(e.target.value)} placeholder="AIza..." type="password" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
             <div className="flex gap-3">
               <button onClick={()=>setShowApiModal(false)} className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 text-sm">Hủy</button>
               <button onClick={()=>{const k=apiKeyInput.trim();setApiKey(k);localStorage.setItem("gsm_api_key",k);setShowApiModal(false);}} className="flex-1 py-2.5 bg-violet-600 rounded-xl text-white text-sm font-bold">Lưu</button>
