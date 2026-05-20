@@ -206,7 +206,6 @@ Trả lời bằng tiếng Việt, ngắn gọn, thực tế. Có thể tư vấ
 };
 const sendAI = async (text) => {
   const t = text.trim(); if(!t||aiLoading) return;
-  if(!apiKey){setApiKeyInput("");setShowApiModal(true);return;}
   const next = [...aiMessages,{role:"user",content:t}];
   setAiMessages(next);setAiInput("");setAiLoading(true);
   try {
@@ -214,11 +213,11 @@ const sendAI = async (text) => {
       role: m.role==="assistant"?"model":"user",
       parts:[{text:m.content}]
     }));
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({contents:[{role:"user",parts:[{text:buildAIPrompt()+"\n\nCâu hỏi: "+next[0].content}]},...contents.slice(1)]})
-      });
+    const res = await fetch("/api/gemini", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({contents, systemPrompt:buildAIPrompt()})
+    });
     const data = await res.json();
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text||data.error?.message||"Không có phản hồi.";
     setAiMessages(prev=>[...prev,{role:"assistant",content:data.error?`❌ ${reply}`:reply}]);
