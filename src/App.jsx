@@ -259,28 +259,25 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
 const vndFmt = n => (n||0).toLocaleString("vi-VN") + "đ";
 const checkTime = new Date(checkTs);
 const timeStr = `${checkTime.toLocaleDateString("vi-VN")} ${String(checkTime.getHours()).padStart(2,"0")}:${String(checkTime.getMinutes()).padStart(2,"0")}`;
-
 // Tin 1: Tổng kết ca
-const msg1 = `📋 <b>Kiểm kê ca hoàn tất</b>
-🏪 Bytebox Gaming
-📅 ${timeStr}
-👤 ${user.name} · ${scData.shiftType}
-
-💰 <b>Doanh thu:</b>
-- Tiền mặt: ${vndFmt(rev.cash)}
-- Tingee (QR): ${vndFmt(rev.tingee)}
-- Netbarbox: ${vndFmt(rev.netbarbox)}
-- Hàng hóa: ${vndFmt(rev.goods)}
-- Tổng: ${vndFmt(rev.cash+rev.tingee+rev.netbarbox+rev.goods)}`;
-- Tổng: ${vndFmt(rev.cash+rev.tingee+rev.netbarbox+rev.goods)}
-
-📦 <b>Hàng hóa đã bán:</b>
-${tempItems.filter(i => i.sold > 0).map(p => {
+const soldItems = tempItems.filter(i => i.sold > 0).map(p => {
   const prod = products.find(x => x.id === p.pId);
-  return `• ${prod?.name || p.pId}: ${p.sold} ${prod?.unit || ""}`;
-}).join("\n") || "• Không có"}`;
-fetch("/api/telegram", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message:msg1}) });
+  return "• " + (prod?.name || p.pId) + ": " + p.sold + " " + (prod?.unit || "");
+}).join("\n") || "• Không có";
 
+const msg1 = "📋 <b>Kiểm kê ca hoàn tất</b>\n" +
+  "🏪 Bytebox Gaming\n" +
+  "📅 " + timeStr + "\n" +
+  "👤 " + user.name + " · " + scData.shiftType + "\n\n" +
+  "💰 <b>Doanh thu:</b>\n" +
+  "• Tiền mặt: " + vndFmt(rev.cash) + "\n" +
+  "• Tingee (QR): " + vndFmt(rev.tingee) + "\n" +
+  "• Netbarbox: " + vndFmt(rev.netbarbox) + "\n" +
+  "• Hàng hóa: " + vndFmt(rev.goods) + "\n" +
+  "• Tổng: " + vndFmt(rev.cash+rev.tingee+rev.netbarbox+rev.goods) + "\n\n" +
+  "📦 <b>Hàng hóa đã bán:</b>\n" + soldItems;
+
+fetch("/api/telegram", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message:msg1}) });
 // Tin 2: Cảnh báo tồn kho thấp
 const lowStock = products.filter(p => p.stock <= p.threshold);
 if (lowStock.length > 0) {
