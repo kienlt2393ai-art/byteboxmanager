@@ -217,7 +217,7 @@ const sendAI = async (text) => {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {method:"POST",headers:{"Content-Type":"application/json"},
-       body:JSON.stringify({system_instruction:{parts:[{text:buildAIPrompt()}]},contents})}
+      body:JSON.stringify({contents:[{role:"user",parts:[{text:buildAIPrompt()+"\n\nCâu hỏi: "+next[0].content}]},...contents.slice(1)]})
     );
     const data = await res.json();
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text||data.error?.message||"Không có phản hồi.";
