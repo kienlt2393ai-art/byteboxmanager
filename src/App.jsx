@@ -778,24 +778,47 @@ export default function Root() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const mapUser = async (u) => {
+    const email = u.email || "";
+    const { data } = await supabase.from("allowed_users").select("*").eq("email", email).single();
+    if (!data) {
+      await supabase.auth.signOut();
+      alert("Tài khoản không được phép truy cập!");
+      return null;
+    }
+    return {
+      name: data.name || u.user_metadata?.full_name || email,
+      email,
+      role: data.role || "employee",
+      ini: (data.name || email)[0].toUpperCase(),
+      color: data.role === "manager" ? "bg-violet-500" : "bg-sky-500"
+    };
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setUser(mapUser(session.user));
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const mapped = await mapUser(session.user);
+        setUser(mapped);
+      }
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session ? mapUser(session.user) : null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        const mapped = await mapUser(session.user);
+        setUser(mapped);
+      } else {
+        setUser(null);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  const mapUser = (u) => {
-    const email = u.email || "";
-    const found = ACCOUNTS.find(a => a.email === email);
-    return found || { name: u.user_metadata?.full_name || email, email, role: "employee", ini: (u.user_metadata?.full_name||email)[0].toUpperCase(), color: "bg-sky-500" };
-  };
-
-  if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-5xl">🎮</div></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="text-5xl">🎮</div>
+    </div>
+  );
 
   return user
     ? <InventoryApp user={user} onLogout={() => supabase.auth.signOut()} />
