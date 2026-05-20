@@ -260,6 +260,7 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
   } catch(err) {
     console.error("Submit failed:",err);
   }
+    alert("telegram!");
   // Gửi Telegram
 const fmt = n => (n||0).toLocaleString("vi-VN") + "đ";
 const checkTime = new Date(checkTs);
