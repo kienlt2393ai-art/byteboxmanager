@@ -256,7 +256,7 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
     if(newLog) setLogs(prev=>[dbToLog(newLog),...prev]);
     setProducts(prev=>prev.map(p=>{const it=tempItems.find(i=>i.pId===p.id);return it?{...p,stock:it.close}:p;}));
     // Gửi Telegram
-const vndFmt = n => (n||0).toLocaleString("vi-VN") + "đ";
+const fmt = n => (n||0).toLocaleString("vi-VN") + "đ";
 const checkTime = new Date(checkTs);
 const timeStr = `${checkTime.toLocaleDateString("vi-VN")} ${String(checkTime.getHours()).padStart(2,"0")}:${String(checkTime.getMinutes()).padStart(2,"0")}`;
 // Tin 1: Tổng kết ca
@@ -270,11 +270,11 @@ const msg1 = "📋 <b>Kiểm kê ca hoàn tất</b>\n" +
   "📅 " + timeStr + "\n" +
   "👤 " + user.name + " · " + scData.shiftType + "\n\n" +
   "💰 <b>Doanh thu:</b>\n" +
-  "• Tiền mặt: " + vndFmt(rev.cash) + "\n" +
-  "• Tingee (QR): " + vndFmt(rev.tingee) + "\n" +
-  "• Netbarbox: " + vndFmt(rev.netbarbox) + "\n" +
-  "• Hàng hóa: " + vndFmt(rev.goods) + "\n" +
-  "• Tổng: " + vndFmt(rev.cash+rev.tingee+rev.netbarbox+rev.goods) + "\n\n" +
+  "• Tiền mặt: " + fmt(rev.cash) + "\n" +
+  "• Tingee (QR): " + fmt(rev.tingee) + "\n" +
+  "• Netbarbox: " + fmt(rev.netbarbox) + "\n" +
+  "• Hàng hóa: " + fmt(rev.goodsRevenue) + "\n" +
+  "• Tổng: " + fmt(rev.cash+rev.tingee+rev.netbarbox+rev.goodsRevenue) + "\n\n" +
   "📦 <b>Hàng hóa đã bán:</b>\n" + soldItems;
 
 fetch("/api/telegram", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message:msg1}) });
