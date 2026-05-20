@@ -255,7 +255,43 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
       await supabase.from("products").update({stock:item.close}).eq("id",item.pId);
     if(newLog) setLogs(prev=>[dbToLog(newLog),...prev]);
     setProducts(prev=>prev.map(p=>{const it=tempItems.find(i=>i.pId===p.id);return it?{...p,stock:it.close}:p;}));
-    setLastCheckTs(Date.now());setScStep(3);
+    // Gửi Telegram
+const vndFmt = n => (n||0).toLocaleString("vi-VN") + "đ";
+const checkTime = new Date(checkTs);
+const timeStr = `${checkTime.toLocaleDateString("vi-VN")} ${String(checkTime.getHours()).padStart(2,"0")}:${String(checkTime.getMinutes()).padStart(2,"0")}`;
+
+// Tin 1: Tổng kết ca
+const msg1 = `📋 <b>Kiểm kê ca hoàn tất</b>
+🏪 Bytebox Gaming
+📅 ${timeStr}
+👤 ${user.name} · ${scData.shiftType}
+
+💰 <b>Doanh thu:</b>
+- Tiền mặt: ${vndFmt(rev.cash)}
+- Tingee (QR): ${vndFmt(rev.tingee)}
+- Netbarbox: ${vndFmt(rev.netbarbox)}
+- Hàng hóa: ${vndFmt(rev.goods)}
+- Tổng: ${vndFmt(rev.cash+rev.tingee+rev.netbarbox+rev.goods)}`;
+- Tổng: ${vndFmt(rev.cash+rev.tingee+rev.netbarbox+rev.goods)}
+
+📦 <b>Hàng hóa đã bán:</b>
+${tempItems.filter(i => i.sold > 0).map(p => {
+  const prod = products.find(x => x.id === p.pId);
+  return `• ${prod?.name || p.pId}: ${p.sold} ${prod?.unit || ""}`;
+}).join("\n") || "• Không có"}`;
+fetch("/api/telegram", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message:msg1}) });
+
+// Tin 2: Cảnh báo tồn kho thấp
+const lowStock = products.filter(p => p.stock <= p.threshold);
+if (lowStock.length > 0) {
+  const msg2 = `⚠️ <b>Cảnh báo tồn kho thấp</b>
+🏪 Bytebox Gaming · ${timeStr}
+
+${lowStock.map(p => `${p.stock === 0 ? "❌" : "🔴"} ${p.name}: còn ${p.stock} ${p.unit} (ngưỡng: ${p.threshold})`).join("\n")}`;
+  fetch("/api/telegram", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({message:msg2}) });
+}
+
+setLastCheckTs(Date.now());setScStep(3);
   };
 
   // ── Manager edit ─────────────────────────────────────────────
