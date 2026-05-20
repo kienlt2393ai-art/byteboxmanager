@@ -247,15 +247,20 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
   };
 
   const submitCheck = async () => {
-    const rev={cash:parseCur(revData.cash),tingee:parseCur(revData.tingee),netbarbox:parseCur(revData.netbarbox),goodsRevenue};
-    const {data:newLog}=await supabase.from("shift_logs").insert({
+  const rev={cash:parseCur(revData.cash),tingee:parseCur(revData.tingee),netbarbox:parseCur(revData.netbarbox),goodsRevenue};
+  try {
+    const {data:newLog,error}=await supabase.from("shift_logs").insert({
       date:todayVN(),shift_type:scData.shiftType,employee:user.name,items:tempItems,revenue:rev,check_time:checkTs,edited_by:null,edited_at:null
     }).select().single();
+    if(error) console.error("Supabase error:",error);
     for(const item of tempItems)
       await supabase.from("products").update({stock:item.close}).eq("id",item.pId);
     if(newLog) setLogs(prev=>[dbToLog(newLog),...prev]);
     setProducts(prev=>prev.map(p=>{const it=tempItems.find(i=>i.pId===p.id);return it?{...p,stock:it.close}:p;}));
-    // Gửi Telegram
+  } catch(err) {
+    console.error("Submit failed:",err);
+  }
+  // Gửi Telegram
 const fmt = n => (n||0).toLocaleString("vi-VN") + "đ";
 const checkTime = new Date(checkTs);
 const timeStr = `${checkTime.toLocaleDateString("vi-VN")} ${String(checkTime.getHours()).padStart(2,"0")}:${String(checkTime.getMinutes()).padStart(2,"0")}`;
