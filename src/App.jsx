@@ -249,7 +249,7 @@ setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fe
   const submitCheck = async () => {
     const rev={cash:parseCur(revData.cash),tingee:parseCur(revData.tingee),netbarbox:parseCur(revData.netbarbox),goodsRevenue};
     const {data:newLog}=await supabase.from("shift_logs").insert({
-      date:todayVN(),shift_type:scData.shiftType,employee:user.name,items:tempItems,revenue:rev,edited_by:null,edited_at:null
+      date:todayVN(),shift_type:scData.shiftType,employee:user.name,items:tempItems,revenue:rev,check_time:checkTs,edited_by:null,edited_at:null
     }).select().single();
     for(const item of tempItems)
       await supabase.from("products").update({stock:item.close}).eq("id",item.pId);
@@ -516,7 +516,7 @@ const fetchTingee = async (endTs) => {
                                   <span className="text-xs bg-violet-500/15 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-full">{log.employee}</span>
                                   <span className={`text-xs px-2 py-0.5 rounded-full border ${isOk?"bg-emerald-500/15 text-emerald-400 border-emerald-500/20":"bg-amber-500/15 text-amber-400 border-amber-500/20"}`}>{isOk?"✅ Khớp":`⚠️ ${diff>0?"−":"+"}${vnd(Math.abs(diff))}`}</span>
                                 </div>
-                                <div className="text-xs text-gray-500 mt-1">{log.date} · NB: {vnd(log.revenue?.netbarbox)}</div>
+                                <div className="text-xs text-gray-500 mt-1">{log.date}{log.check_time ? ` ${String(new Date(log.check_time).getHours()).padStart(2,"0")}:${String(new Date(log.check_time).getMinutes()).padStart(2,"0")}` : ""} · NB: {vnd(log.revenue?.netbarbox)}</div>
                               </div>
                               <ChevronDown size={16} className={`text-gray-500 transition-transform ${expandedRev===log.id?"rotate-180":""}`}/>
                             </button>
