@@ -17,7 +17,7 @@ const stockBorder= p  => p.stock===0?"border-red-500/25 bg-red-500/5":p.stock<=p
 const acct       = em => ACCOUNTS.find(a=>a.email===em);
 
 const ACCOUNTS = [
-  { name:"Chủ quán", email:"owner@bytebox.com", role:"manager",  ini:"CQ", color:"bg-violet-500" },
+  { name:"Chủ quán", email:"kienlt2393@gmail.com", role:"manager",  ini:"CQ", color:"bg-violet-500" },
   { name:"Minh",     email:"minh@bytebox.com",  role:"employee", ini:"M",  color:"bg-sky-500"    },
   { name:"Tuấn",     email:"tuan@bytebox.com",  role:"employee", ini:"T",  color:"bg-emerald-500"},
 ];
