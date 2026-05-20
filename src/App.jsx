@@ -240,7 +240,7 @@ function InventoryApp({ user, onLogout }) {
       const open=scData.openingStocks[p.id]??p.stock,imp=scData.importedInShift[p.id]??0;
       return{pId:p.id,open,imported:imp,close,sold:Math.max(0,open+imp-close)};
     }).filter(Boolean);
-    empItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fetchTingee();
+   setTempItems(items);setRevData({cash:"",tingee:"",netbarbox:""});setScStep(2);fetchTingee();
   };
 
   const submitCheck = async () => {
