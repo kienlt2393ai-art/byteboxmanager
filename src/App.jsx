@@ -90,14 +90,14 @@ function InventoryApp({ user, onLogout }) {
   const [editCloses,  setEditCloses]  = useState({});
   const [revDate,     setRevDate]     = useState("");
   const [expandedRev, setExpandedRev] = useState(null);
-  const [aiMessages,  setAiMessages]  = useState([]);
-  const [aiInput,     setAiInput]     = useState("");
-  const [aiLoading,   setAiLoading]   = useState(false);
-  const [apiKey,      setApiKey]      = useState(()=>localStorage.getItem("gsm_api_key")||"");
-  const [showApiModal,setShowApiModal]= useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const aiBottomRef = useRef(null);
-  useEffect(()=>{aiBottomRef.current?.scrollIntoView({behavior:"smooth"});},[aiMessages,aiLoading]);
+  // const [aiMessages,  setAiMessages]  = useState([]);
+  // const [aiInput,     setAiInput]     = useState("");
+  // const [aiLoading,   setAiLoading]   = useState(false);
+  // const [apiKey,      setApiKey]      = useState(()=>localStorage.getItem("gsm_api_key")||"");
+  // const [showApiModal,setShowApiModal]= useState(false);
+  // const [apiKeyInput, setApiKeyInput] = useState("");
+  // const aiBottomRef = useRef(null);
+  // useEffect(()=>{aiBottomRef.current?.scrollIntoView({behavior:"smooth"});},[aiMessages,aiLoading]);
 
   // ── Load data from Supabase ──────────────────────────────────
   useEffect(()=>{ loadData(); },[]);
@@ -140,8 +140,8 @@ function InventoryApp({ user, onLogout }) {
   const revExpected=revNB-revTingee, revDiff=revExpected>0?revExpected-revCash:0;
   const goodsRevenue=tempItems.reduce((s,i)=>{const p=getP(i.pId);return s+i.sold*(p?.price||0);},0);
 
-  // ── AI ───────────────────────────────────────────────────────
-  const QUICK_AI=[
+  // ── AI (tạm ẩn) ──────────────────────────────────────────────
+  /* const QUICK_AI=[
     {icon:"📦",label:"Tồn kho hôm nay",     prompt:"Tổng kết tình trạng tồn kho và sản phẩm cần nhập thêm"},
     {icon:"💰",label:"Phân tích doanh thu",  prompt:"Phân tích doanh thu các ca gần nhất, ca nào có vấn đề?"},
     {icon:"⚠️",label:"Ca nào bất thường?",  prompt:"Ca nào có dấu hiệu bất thường về tiền mặt hoặc tồn kho?"},
@@ -210,7 +210,7 @@ const sendAI = async (text) => {
     setAiMessages(prev=>[...prev,{role:"assistant",content:"❌ Lỗi kết nối."}]);
   }
   setAiLoading(false);
-};
+}; */
   // ── Product CRUD ─────────────────────────────────────────────
   const openAdd  = () => { setPForm({name:"",unit:"lon",threshold:"12",stock:"0",price:""}); setModal("add"); };
   const openEdit = p  => { setPForm({name:p.name,unit:p.unit,threshold:String(p.threshold),stock:String(p.stock),price:String(p.price||"")}); setModal(p); };
@@ -354,7 +354,7 @@ const fetchTingee = async (endTs) => {
   const ua=acct(user.email);
   const TABS=[
     {label:"Tổng quan",Icon:Package},{label:"Nhập kho",Icon:ArrowDownToLine},
-    {label:"Kiểm kê ca",Icon:ClipboardList},{label:"Doanh thu",Icon:TrendingUp},{label:"Trợ lý AI",Icon:Sparkles},
+    {label:"Kiểm kê ca",Icon:ClipboardList},{label:"Doanh thu",Icon:TrendingUp},
   ];
 
   // ── Loading screen ───────────────────────────────────────────
@@ -371,7 +371,7 @@ const fetchTingee = async (endTs) => {
       {/* Header */}
       <div className="px-4 pt-5 pb-3 bg-gray-950 sticky top-0 z-10 border-b border-gray-800/60">
         <div className="flex items-center justify-between">
-          <div><h1 className="text-base font-bold text-white">{["📦 Tổng quan","📦 Nhập kho","📋 Kiểm kê ca","💰 Doanh thu","🤖 Trợ lý AI"][tab]}</h1><p className="text-xs text-gray-500 mt-0.5">Bytebox Gaming · {todayVN()}</p></div>
+          <div><h1 className="text-base font-bold text-white">{["📦 Tổng quan","📦 Nhập kho","📋 Kiểm kê ca","💰 Doanh thu"][tab]}</h1><p className="text-xs text-gray-500 mt-0.5">Bytebox Gaming · {todayVN()}</p></div>
           <div className="flex items-center gap-2">
             {lowCount>0&&<div className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/25 rounded-full px-2.5 py-1"><AlertTriangle size={11} className="text-amber-400"/><span className="text-xs font-semibold text-amber-400">{lowCount}</span></div>}
             <div className="flex items-center gap-1.5 bg-gray-800/80 border border-gray-700/50 rounded-full pl-1 pr-2.5 py-1">
@@ -640,8 +640,8 @@ const fetchTingee = async (endTs) => {
           </div>
         )}
 
-        {/* TAB 4: AI */}
-        {tab===4&&(
+        {/* TAB 4: AI (tạm ẩn) */}
+        {false&&tab===4&&(
           <div className="flex flex-col">
             <div className="px-4 py-4 space-y-4 min-h-96">
               {aiMessages.length===0&&(
@@ -755,8 +755,8 @@ const fetchTingee = async (endTs) => {
         </div>
       )}
 
-      {/* API Key modal */}
-      {showApiModal&&(
+      {/* API Key modal (tạm ẩn) */}
+      {false&&(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 px-6">
           <div className="bg-gray-900 border border-gray-700/80 rounded-2xl w-full max-w-xs p-5 space-y-4">
             <h3 className="font-bold text-white">⚙️ Gemini API Key</h3>
