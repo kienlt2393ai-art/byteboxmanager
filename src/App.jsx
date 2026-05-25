@@ -780,7 +780,7 @@ export default function Root() {
 
   const mapUser = async (u) => {
     const email = u.email || "";
-    const { data } = await supabase.from("allowed_users").select("*").eq("email", email).single();
+    const { data } = await supabase.from("allowed_users").select("*").eq("email", email).maybeSingle();
     if (!data) {
       await supabase.auth.signOut();
       alert("Tài khoản không được phép truy cập!");
